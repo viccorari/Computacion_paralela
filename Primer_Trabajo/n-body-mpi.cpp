@@ -1,15 +1,32 @@
-/* C Example */
 #include <mpi.h>
+#include <iostream>
 #include <stdio.h>
- 
-int main (int argc, char* argv[])
+
+using namespace std;
+
+main(int argc, char **argv)
 {
-  int rank, size;
- 
-  MPI_Init (&argc, &argv);      /* starts MPI */
-  MPI_Comm_rank (MPI_COMM_WORLD, &rank);        /* get current process id */
-  MPI_Comm_size (MPI_COMM_WORLD, &size);        /* get number of processes */
-  printf( "Hello world from process %d of %d\n", rank, size );
-  MPI_Finalize();
-  return 0; 
+	int my_id, root_process, ierr, num_procs;
+
+	MPI_Status status;
+
+	ierr = MPI_Init(&argc, &argv);
+
+	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
+	ierr = MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+	if( my_id == 0 ) {
+		cout<<"Hola mundo soy el 0"<<endl;
+	}
+	else if( my_id == 1 ) {
+		cout<<"Hola mundo soy el 1"<<endl;
+	}
+	else if( my_id == 2 ) {
+		cout<<"Hola mundo soy el 2"<<endl;
+	} 
+	else {
+		cout<<"Hola mundo soy cualquiera"<<endl;
+	}
+
+	ierr = MPI_Finalize();
 }
