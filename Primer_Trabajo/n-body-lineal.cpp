@@ -1,6 +1,8 @@
 #include <iostream>
 #include <time.h>
 #include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include "omp.h"
 
 using namespace std;
@@ -312,10 +314,10 @@ int main()
 
 	double wtick = omp_get_wtick();
 
-	printf_s("start = %.16g\nend = %.16g\ndiff = %.16g\n",
+	printf("start = %.16g\nend = %.16g\ndiff = %.16g\n",
 		start, end, end - start);
 
-	printf_s("wtick = %.16g\n1/wtick = %.16g\n",
+	printf("wtick = %.16g\n1/wtick = %.16g\n",
 		wtick, 1.0 / wtick);
 
 	body.print_mat(body.forces);
@@ -330,10 +332,10 @@ int main()
 
 	wtick = omp_get_wtick();
 
-	printf_s("start = %.16g\nend = %.16g\ndiff = %.16g\n",
+	printf("start = %.16g\nend = %.16g\ndiff = %.16g\n",
 		start, end, end - start);
 
-	printf_s("wtick = %.16g\n1/wtick = %.16g\n",
+	printf("wtick = %.16g\n1/wtick = %.16g\n",
 		wtick, 1.0 / wtick);
 
 	body.print_mat(body.forces);
