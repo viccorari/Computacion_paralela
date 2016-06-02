@@ -110,8 +110,6 @@ public:
 			}
 		}
 	}
-
-
 };
 
 double randf(int LO, int HI) {
@@ -141,5 +139,4 @@ int main()
 	body.input_data_2(pos_x, pos_y, masses);
 	body.lineal();
 	body.print_mat(body.forces);
-
 }

@@ -119,15 +119,43 @@ public:
 			}
 		}
 	}
-
+	
 	static void* n_part_f(void* p)
 	{
-		;
 		static_cast<n_body *>(static_cast<arg_struct *>(p)->b)->n_part(static_cast<arg_struct *>(p)->t_id);
 		return NULL;
 	}
 
 
+	void n_part (int tid){
+		double G = 6.673 * pow(10, -11);
+		for (int q = tid*t_long ; q < (tid*t_long)+t_long; q++) {
+
+			copy_data(pos, old_pos);
+			copy_data(vel, old_vel);
+
+			for (int k = 0; k < n_particulas; k++) {
+				if (k > q) {
+					double x_diff = old_pos[q][0] - old_pos[k][0];
+					double y_diff = old_pos[q][1] - old_pos[k][1];
+					double dist = sqrtf(powf(x_diff, 2) + powf(y_diff, 2));
+					double dist_cubed = powf(dist, 3);
+					double forceqkx = ((G * masses[q] * masses[k]) / dist_cubed) * x_diff;
+					double forceqky = ((G * masses[q] * masses[k]) / dist_cubed) * y_diff;
+					forces[q][0] += forceqkx;
+					forces[q][1] += forceqky;
+					forces[k][0] -= forceqkx;
+					forces[k][1] -= forceqky;
+				}
+			}
+			ace[q][0] = forces[q][0] / masses[q];
+			ace[q][1] = forces[q][1] / masses[q];
+			pos[q][0] += t*old_vel[q][0];
+			pos[q][1] += t*old_vel[q][1];
+			vel[q][0] += t / masses[q] * forces[q][0];
+			vel[q][1] += t / masses[q] * forces[q][1];
+		}
+	}
 
 };
 
