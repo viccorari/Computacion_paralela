@@ -1,11 +1,23 @@
 #include <iostream>
+#include <stdio.h>
 #include <time.h>
 #include <math.h>
+#include <cstdlib>
 #include <stdlib.h>
-#include <stdio.h>
-#include "omp.h"
+#include <pthread.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdint.h>
 
 using namespace std;
+
+class n_body;
+
+struct arg_struct {
+    public:
+    n_body * b;
+    int t_id;
+};
 
 class n_body {
 public:
@@ -19,12 +31,16 @@ public:
 	long dimension;
 	double ** old_pos;
 	double ** old_vel;
-
+	int t_long;
+	int t;
+	int tid;
+	
 	n_body(int n, int dim) {
 		reset(n, dim);
 	}
 
 	void reset(int n, int dim) {
+		t=0;
 		n_particulas = n;
 		dimension = dim;
 		pos = init_mat(n, dim);
@@ -91,33 +107,34 @@ public:
 	void print_data() {
 		print_d(pos, "Posicion:");
 		print_d(vel, "Velocidad:");
-		print_d(ace, "Velocidad:");
+		print_d(ace, "Aceleracion:");
 		print_d(forces, "Fuerza:");
 	}
 
-	void lineal() {
-		double G = 6.673 * pow(10, -11);
-		for (int q = 0; q < n_particulas; q++) {
-			for (int k = 0; k < n_particulas; k++) {
-				if (k != q) {
-					double x_diff = pos[q][0] - pos[k][0];
-					double y_diff = pos[q][1] - pos[k][1];
-					double dist = sqrtf(powf(x_diff, 2) + powf(y_diff, 2));
-					double dist_cubed = powf(dist, 3);
-					forces[q][0] -= ((G * masses[q] * masses[k]) / dist_cubed) * x_diff;
-					forces[q][1] -= ((G * masses[q] * masses[k]) / dist_cubed) * y_diff;
-				}
+
+	void copy_data(double ** origen, double ** destino) {
+		for (int i = 0; i < n_particulas; i++) {
+			for (int j = 0; j < dimension; j++) {
+				destino[i][j] = origen[i][j];
 			}
 		}
 	}
 
+	static void* n_part_f(void* p)
+	{
+		;
+		static_cast<n_body *>(static_cast<arg_struct *>(p)->b)->n_part(static_cast<arg_struct *>(p)->t_id);
+		return NULL;
+	}
+
+
 
 };
+
 
 double randf(int LO, int HI) {
 	return LO + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (HI - LO)));
 }
-
 
 int main()
 {
@@ -125,7 +142,7 @@ int main()
 	const int Tam = 10;
 	const int Dim = 2;
 	const float delta = 0.01;
-	const int steps = 100;
+	const int steps = 500000;
 	n_body body(Tam, Dim);
 	double masses[Tam];
 	double pos_x[Tam];
@@ -137,9 +154,45 @@ int main()
 		pos_y[i] = randf(0.001, 2);
 	}
 
-	cout <<endl<< "Lineal" << endl;
+	cout << endl << "Parallel pthread" << endl;
+	body.reset(Tam, Dim);
 	body.input_data_2(pos_x, pos_y, masses);
-	body.lineal();
-	body.print_mat(body.forces);
 
+	int n_t = 5;
+
+	double G = 6.673 * pow(10, -11);
+
+	pthread_t threads[n_t];
+	int t_long = Tam/n_t;
+	body.t_long = t_long;
+	void *status;
+	pthread_attr_t child_attr;
+	pthread_attr_init(&child_attr); 
+	pthread_attr_setdetachstate(&child_attr, PTHREAD_CREATE_DETACHED);
+
+	for (int i = 0; i < steps; i++) {
+		
+		for(int it=0; it < n_t; it++ ){
+			arg_struct ad;
+			ad.b = &body;
+			ad.t_id = it;
+			int rc = pthread_create(&threads[it], &child_attr, n_body::n_part_f, &ad);
+			if (rc){
+				cout << "Error:unable to create thread, " << rc << endl;
+				exit(-1);
+			}
+		}
+	
+		if(0){
+			cout <<endl <<"Step:" << i << endl;
+			body.print_data();
+		}
+		body.t += delta;
+	}
+
+	body.print_mat(body.forces);
+	pthread_exit(NULL);
 }
+
+
+

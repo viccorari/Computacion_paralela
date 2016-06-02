@@ -95,29 +95,73 @@ public:
 		print_d(forces, "Fuerza:");
 	}
 
-	void lineal() {
-		double G = 6.673 * pow(10, -11);
-		for (int q = 0; q < n_particulas; q++) {
-			for (int k = 0; k < n_particulas; k++) {
-				if (k != q) {
-					double x_diff = pos[q][0] - pos[k][0];
-					double y_diff = pos[q][1] - pos[k][1];
-					double dist = sqrtf(powf(x_diff, 2) + powf(y_diff, 2));
-					double dist_cubed = powf(dist, 3);
-					forces[q][0] -= ((G * masses[q] * masses[k]) / dist_cubed) * x_diff;
-					forces[q][1] -= ((G * masses[q] * masses[k]) / dist_cubed) * y_diff;
-				}
+
+	void copy_data(double ** origen, double ** destino) {
+		for (int i = 0; i < n_particulas; i++) {
+			for (int j = 0; j < dimension; j++) {
+				destino[i][j] = origen[i][j];
 			}
 		}
 	}
 
+	void opm_simple (double delta, int steps, int print=0) {
+		double G = 6.673 * pow(10, -11);
+		double t = 0;
 
+		for (int i = 0; i < steps; i++) {
+			#pragma omp parallel
+			{
+				#pragma omp for
+				for (int q = 0; q < n_particulas; q++) {
+					forces[q][0] = forces[q][1] = 0.0;
+				}
+				#pragma omp for
+				for (int q = 0; q < n_particulas; q++) {
+
+					copy_data(pos, old_pos);
+					copy_data(vel, old_vel);
+
+					for (int k = 0; k < n_particulas; k++) {
+						if (k > q) {
+							double x_diff = old_pos[q][0] - old_pos[k][0];
+							double y_diff = old_pos[q][1] - old_pos[k][1];
+							double dist = sqrtf(powf(x_diff, 2) + powf(y_diff, 2));
+							double dist_cubed = powf(dist, 3);
+							double forceqkx = ((G * masses[q] * masses[k]) / dist_cubed) * x_diff;
+							double forceqky = ((G * masses[q] * masses[k]) / dist_cubed) * y_diff;
+							forces[q][0] += forceqkx;
+							forces[q][1] += forceqky;
+							forces[k][0] -= forceqkx;
+							forces[k][1] -= forceqky;
+						}
+					}
+				}
+
+				#pragma omp for
+				for (int q = 0; q < n_particulas; q++) {
+					ace[q][0] = forces[q][0] / masses[q];
+					ace[q][1] = forces[q][1] / masses[q];
+					pos[q][0] += t*old_vel[q][0];
+					pos[q][1] += t*old_vel[q][1];
+					vel[q][0] += t / masses[q] * forces[q][0];
+					vel[q][1] += t / masses[q] * forces[q][1];
+				}
+
+				if(print){
+					cout <<endl <<"Step:" << i << endl;
+					print_data();
+				}
+				t += delta;
+			}
+		}
+	}
 };
+
+
 
 double randf(int LO, int HI) {
 	return LO + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (HI - LO)));
 }
-
 
 int main()
 {
@@ -125,7 +169,7 @@ int main()
 	const int Tam = 10;
 	const int Dim = 2;
 	const float delta = 0.01;
-	const int steps = 100;
+	const int steps = 500000;
 	n_body body(Tam, Dim);
 	double masses[Tam];
 	double pos_x[Tam];
@@ -137,9 +181,21 @@ int main()
 		pos_y[i] = randf(0.001, 2);
 	}
 
-	cout <<endl<< "Lineal" << endl;
+	cout << endl << "Parallel Open-MP" << endl;
+	body.reset(Tam, Dim);
 	body.input_data_2(pos_x, pos_y, masses);
-	body.lineal();
-	body.print_mat(body.forces);
+	double start = omp_get_wtime();
+	body.opm_simple (delta, steps);
+	double end = omp_get_wtime();
 
+	double wtick = omp_get_wtick();
+
+	printf("start = %.16g\nend = %.16g\ndiff = %.16g\n",
+		start, end, end - start);
+
+	printf("wtick = %.16g\n1/wtick = %.16g\n",
+		wtick, 1.0 / wtick);
+
+	body.print_mat(body.forces);
 }
+

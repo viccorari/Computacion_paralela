@@ -95,29 +95,77 @@ public:
 		print_d(forces, "Fuerza:");
 	}
 
-	void lineal() {
+	void lineal_reduce() {
 		double G = 6.673 * pow(10, -11);
 		for (int q = 0; q < n_particulas; q++) {
 			for (int k = 0; k < n_particulas; k++) {
-				if (k != q) {
+				if (k > q) {
 					double x_diff = pos[q][0] - pos[k][0];
 					double y_diff = pos[q][1] - pos[k][1];
 					double dist = sqrtf(powf(x_diff, 2) + powf(y_diff, 2));
 					double dist_cubed = powf(dist, 3);
-					forces[q][0] -= ((G * masses[q] * masses[k]) / dist_cubed) * x_diff;
-					forces[q][1] -= ((G * masses[q] * masses[k]) / dist_cubed) * y_diff;
+					double forceqkx = ((G * masses[q] * masses[k]) / dist_cubed) * x_diff;
+					double forceqky = ((G * masses[q] * masses[k]) / dist_cubed) * y_diff;
+					forces[q][0] += forceqkx;
+					forces[q][1] += forceqky;
+					forces[k][0] -= forceqkx;
+					forces[k][1] -= forceqky;
 				}
 			}
 		}
 	}
+	
 
+	void copy_data(double ** origen, double ** destino) {
+		for (int i = 0; i < n_particulas; i++) {
+			for (int j = 0; j < dimension; j++) {
+				destino[i][j] = origen[i][j];
+			}
+		}
+	}
 
+	void lineal_reduce_steps(double delta, int steps, int print=0) {
+		double G = 6.673 * pow(10, -11);
+		double t = 0;
+		for (int i = 0; i < steps; i++) {
+			for (int q = 0; q < n_particulas; q++) {
+
+				copy_data(pos, old_pos);
+				copy_data(vel, old_vel);
+
+				for (int k = 0; k < n_particulas; k++) {
+					if (k > q) {
+						double x_diff = old_pos[q][0] - old_pos[k][0];
+						double y_diff = old_pos[q][1] - old_pos[k][1];
+						double dist = sqrtf(powf(x_diff, 2) + powf(y_diff, 2));
+						double dist_cubed = powf(dist, 3);
+						double forceqkx = ((G * masses[q] * masses[k]) / dist_cubed) * x_diff;
+						double forceqky = ((G * masses[q] * masses[k]) / dist_cubed) * y_diff;
+						forces[q][0] += forceqkx;
+						forces[q][1] += forceqky;
+						forces[k][0] -= forceqkx;
+						forces[k][1] -= forceqky;
+					}
+				}
+				ace[q][0] = forces[q][0] / masses[q];
+				ace[q][1] = forces[q][1] / masses[q];
+				pos[q][0] += t*old_vel[q][0];
+				pos[q][1] += t*old_vel[q][1];
+				vel[q][0] += t / masses[q] * forces[q][0];
+				vel[q][1] += t / masses[q] * forces[q][1];
+			}
+			if (print){
+				cout <<endl <<"Step:" << i << endl;
+				print_data();
+			}
+			t += delta;
+		}
+	}
 };
 
 double randf(int LO, int HI) {
 	return LO + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (HI - LO)));
 }
-
 
 int main()
 {
@@ -137,9 +185,16 @@ int main()
 		pos_y[i] = randf(0.001, 2);
 	}
 
-	cout <<endl<< "Lineal" << endl;
+	cout <<endl<< "Lineal Reduce" << endl;
 	body.input_data_2(pos_x, pos_y, masses);
-	body.lineal();
+	body.lineal_reduce();
+	body.print_mat(body.forces);
+	cout <<endl<< "Lineal Reduce With "<<steps<<" Steps" << endl;
+	body.reset(Tam, Dim);
+	body.input_data_2(pos_x, pos_y, masses);
+	body.lineal_reduce_steps(delta, steps);
 	body.print_mat(body.forces);
 
 }
+
+	
